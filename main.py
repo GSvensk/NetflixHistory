@@ -4,9 +4,11 @@ import requests
 import urllib.parse
 import time
 from flask_cors import CORS
+import json
+from datetime import datetime
 
 
-API_KEY = "8"
+API_KEY = "8c04c3e5fe547c0b2ec18438737a5dbc"
 MAX_TRIES = 3
 API_SLEEP_TIME = 10
 
@@ -25,11 +27,12 @@ def get_media_runtime(most_probable_result):
                          "?api_key=" +
                          API_KEY +
                          "&language=en-US")
-
+    if media.status_code == 7:
+        print("INVALID API KEY")
     try:
         runtime = 0
         if most_probable_result['media_type'] == 'movie':
-            runtime =  media.json()['runtime']
+            runtime = media.json()['runtime']
         elif most_probable_result['media_type'] == 'tv':
             runtime = media.json()['episode_run_time'][0]
             if len(media.json()['episode_run_time']) > 1:
@@ -64,7 +67,6 @@ parser = reqparse.RequestParser()
 
 class ParseFile(Resource):
     def post(self):
-        #parser.add_argument('items')
         parser.add_argument("items", type=dict, action="append")
 
         args = parser.parse_args()
@@ -74,19 +76,20 @@ class ParseFile(Resource):
         dates = {}
         tot_length = 0
         not_found = 0
-        titles_consumed = 0
+        data = {}
+        weekdays = [0] * 7
+        print(weekdays)
 
         for title in items:
             print(title)
-            date = items[title]
+            date = datetime.strptime(items[title], '%Y-%m-%d')
             title = parse_title(list(title.split(':'))[0])
             dates[date] = 0
-
-            titles_consumed += 1
 
             if title in media_length:
                 dates[date] += media_length[title]
                 tot_length += media_length[title]
+                weekdays[date.weekday()] += media_length[title]
                 continue
 
             search = try_search_tmdb(title)
@@ -96,6 +99,7 @@ class ParseFile(Resource):
                 most_probable_result = list(search.json()['results'])[0]
                 runtime = get_media_runtime(most_probable_result)
                 dates[date] += runtime
+                weekdays[date.weekday()] += runtime
                 media_length[title] = runtime
                 tot_length += runtime
 
@@ -103,15 +107,18 @@ class ParseFile(Resource):
                 print("Not found: {}".format(title))
                 not_found += 1
 
-        print("Not found: " + str(not_found))
-        print(tot_length)
-        print(tot_length / 60)
         longest_time = max(dates.values())
         print("longest_time?" + str(longest_time))
-        longest_day = max(dates.keys(), key=(lambda key: dates[key]))
-        print("Top day: " + longest_day + " Length (h): " + str(dates[longest_day] / 60))
 
-        return {'runtime': tot_length/60}
+        longest_day = max(dates, key=(lambda key: dates[key]))
+        data['runtime'] = tot_length
+        data['not_found'] = not_found
+        data['highscore'] = longest_time
+        data['highscore_date'] = dates[longest_day]
+        data['weekdays'] = list(weekdays)
+
+        json_data = json.dumps(data)
+        return json_data
 
 
 api.add_resource(ParseFile, '/parse')
