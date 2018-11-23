@@ -1,4 +1,7 @@
 .idea/
-environment.json
+environment.py
 venv/
 test.json
+__pycache__/
+app/__pychache__/
+database.db
