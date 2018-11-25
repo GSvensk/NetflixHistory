@@ -6,7 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 
 app = Flask(__name__)
-#cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
+#cors = CORS(app, resources={r"/parse": {"origins": "*"}})
 CORS(app)
 api = Api(app)
 file_path = os.path.abspath(os.getcwd())+"\database.db"

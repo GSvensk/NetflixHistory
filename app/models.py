@@ -5,10 +5,10 @@ class Media(db.Model):
     runtime = db.Column(db.Integer(), unique=False, nullable=True)
     movie = db.Column(db.Integer())
 
-    def __init__(self, name, runtime, mediatype = 0):
+    def __init__(self, name, runtime, movie = 0):
         self.name = name
         self.runtime = runtime
-        self.mediatype = mediatype
+        self.movie = movie
 
     def __repr__(self):
         return 'Media {}'.format(self.name)

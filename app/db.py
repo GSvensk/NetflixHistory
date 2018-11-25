@@ -5,15 +5,16 @@ from .models import Media, NotFound
 def init_db():
     db.create_all()
     #Media.query.delete()
+    #NotFound.query.delete()
     db.session.commit()
 
 
-def get_runtime(name):
+def get_media(name):
     media = Media.query.filter_by(name=name).first()
     if media:
-        return media.runtime
+        return media
     else:
-        return -1
+        return None
 
 
 def add_media(name, runtime, mediatype = 0):

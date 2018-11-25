@@ -58,10 +58,11 @@ def parse_file(items):
     media_length = {}
     tot_length = 0
     not_found = 0
+    movies = 0
     data = {}
     dates = {}
     weekdays = [0] * 7
-    months = [0] * 12
+    months = [0] * 13
     years = {}
 
     for title in items:
@@ -78,58 +79,67 @@ def parse_file(items):
             years[date.year] += media_length[title]
             tot_length += media_length[title]
             weekdays[date.weekday()] += media_length[title]
-            months[date.month] += media_length[title]
+            months[date.month - 1] += media_length[title]
             continue
 
-        runtime = get_runtime(title)
-        if runtime != -1:
+        media = get_media(title)
+        if media:
+            runtime = media.runtime
+            if media.movie == 1:
+                movies += 1
+
             media_length[title] = runtime
             dates[date] += runtime
             years[date.year] += runtime
             tot_length += runtime
             weekdays[date.weekday()] += runtime
-            months[date.month] += runtime
+            months[date.month - 1] += runtime
             continue
 
         search = try_search_tmdb(title)
 
         if len(list(search.json()['results'])) > 0:
-
             most_probable_result = list(search.json()['results'])[0]
             runtime = get_media_runtime(most_probable_result)
-
-            dates[date] += runtime
-            years[date.year] += runtime
-            weekdays[date.weekday()] += runtime
-            months[date.month] += runtime
-            media_length[title] = runtime
-            tot_length += runtime
-            add_media(title, runtime)
-
+            if most_probable_result['media_type'] == 'movie':
+                movies += 1
+                add_media(title, runtime, 1)
+            else:
+                add_media(title, runtime, 0)
         else:
-            add_notfound(title)
-            print("Not found: {}".format(title))
-            not_found += 1
+            if title == "Club of Crows":
+                runtime = 40
+            else:
+                add_notfound(title)
+                print("Not found: {}".format(title))
+                not_found += 1
+
+        dates[date] += runtime
+        years[date.year] += runtime
+        weekdays[date.weekday()] += runtime
+        months[date.month - 1] += runtime
+        media_length[title] = runtime
+        tot_length += runtime
 
     longest_time = max(dates.values())
-    print("longest_time?" + str(longest_time))
-
     longest_day = max(dates, key=(lambda key: dates[key]))
     data['runtime'] = tot_length
     data['not_found'] = not_found
+    data['movies'] = movies
     data['highscore'] = longest_time
     data['highscore_date'] = str(longest_day).split(' ')[0]
-    data['weekdays'] = list(weekdays)
-    data['months'] = list(months)
+    # Convert to hours
+    data['weekdays'] = list(map((lambda x: x/60), weekdays))
+    data['months'] = list(map((lambda x: x/60), months))
     data['years'] = years
     return json.dumps(data)
 
 
 def test_db():
     add_media('test', 5, 0)
-    runtime = get_runtime('test')
+    media = get_media('test')
     delete_media('test')
-    return runtime
+    return media.runtime
 
 
 def show_db():
