@@ -4,14 +4,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import psycopg2
 import os
-from environment import *
 
-
-# the values of those depend on your setup
-POSTGRES_URL = POSTGRES_URL
-POSTGRES_USER = POSTGRES_USERNAME
-POSTGRES_PW = POSTGRES_PASSWORD
-POSTGRES_DB = POSTGRES_DB
 
 app = Flask(__name__)
 cors = CORS(app, resources={r"/parse": {"origins": "*"}})
