@@ -1,17 +1,33 @@
 from flask import Flask, g
 from flask_restful import Resource, Api, reqparse
 from flask_cors import CORS
-
 from flask_sqlalchemy import SQLAlchemy
+import psycopg2
 import os
+from environment import *
+
+
+# the values of those depend on your setup
+POSTGRES_URL = POSTGRES_URL
+POSTGRES_USER = POSTGRES_USERNAME
+POSTGRES_PW = POSTGRES_PASSWORD
+POSTGRES_DB = POSTGRES_DB
 
 app = Flask(__name__)
 cors = CORS(app, resources={r"/parse": {"origins": "*"}})
 api = Api(app)
-file_path = os.path.abspath(os.getcwd())+"\database.db"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + file_path
+#if local
+#file_path = os.path.abspath(os.getcwd())+"\database.db"
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + file_path
+#if prod?
+#DATABASE_URL = os.environ['DATABASE_URL']
+#DB_URL = 'postgresql+psycopg2://{user}:{pw}@{url}/{db}'.format(user=POSTGRES_USER,pw=POSTGRES_PW,url=POSTGRES_URL,db=POSTGRES_DB)
+#app.config['SQLALCHEMY_DATABASE_URI'] = DB_URL
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://oahgefuyjsvlfw:3091468ced69d00e2b861e50f69c89dbdbe5543e04f0fb0b18574fafd31f8f7b@ec2-54-75-231-3.eu-west-1.compute.amazonaws.com:5432/dd1ca7tqpk39v8'
 db = SQLAlchemy(app)
+#conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 db.init_app(app)
 
 parser = reqparse.RequestParser()
@@ -46,8 +62,8 @@ api.add_resource(ShowDB, '/show')
 
 
 if __name__ == '__main__':
-    from app.db import init_db
-    init_db()
+    #from app.db import init_db
+    #init_db()
     app.run(debug=True)
 
 
