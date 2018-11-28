@@ -3,10 +3,11 @@ from .models import Media, NotFound
 
 
 def init_db():
+
     db.create_all()
     #Media.query.delete()
     #NotFound.query.delete()
-    db.session.commit()
+    #db.session.commit()
 
 
 def get_media(name):

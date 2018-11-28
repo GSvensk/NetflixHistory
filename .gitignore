@@ -5,3 +5,4 @@ test.json
 __pycache__/
 app/__pychache__/
 database.db
+migrations/

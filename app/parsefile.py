@@ -4,10 +4,11 @@ import time
 import urllib.parse
 import requests
 from .db import *
-from environment import API_KEY
+#from environment import API_KEY
 
 MAX_TRIES = 3
 API_SLEEP_TIME = 10
+API_KEY = "8c04c3e5fe547c0b2ec18438737a5dbc"
 
 class Movie:
 
