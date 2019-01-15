@@ -4,26 +4,13 @@ import time
 import urllib.parse
 import requests
 from .db import *
+from .redis import Redis
+from .models import Movie, Series
 #from environment import API_KEY
 
 MAX_TRIES = 3
 API_SLEEP_TIME = 10
 API_KEY = "8c04c3e5fe547c0b2ec18438737a5dbc"
-
-class Movie:
-
-    def __init__(self, name, runtime, times_watched = 1):
-        self.name = name
-        self.runtime = runtime
-        self.times_watched = times_watched
-
-
-class Series:
-
-    def __init__(self, name, runtime, episodes_watched = 1):
-        self.name = name
-        self.runtime = runtime
-        self.episodes_watched = episodes_watched
 
 
 def parse_title(title):
@@ -59,7 +46,10 @@ def get_media_runtime(most_probable_result):
 
 
 def try_search_tmdb(title):
+
     tries = 1
+    title = parse_title(title)
+
     while tries < MAX_TRIES:
         tries += 1
         result = requests.get("https://api.themoviedb.org/3/search/multi?" +
@@ -69,11 +59,13 @@ def try_search_tmdb(title):
         if result.status_code == 200:
             return result
         elif result.status_code == 429:
+            print("sleep")
             time.sleep(API_SLEEP_TIME)
 
 
 def parse_file(items):
 
+    redis = Redis()
     series = {}
     movies = {}
     tot_length = 0
@@ -86,9 +78,10 @@ def parse_file(items):
     years = {}
 
     for title in items:
-        #print(title)
         date = datetime.strptime(items[title], '%Y-%m-%d')
-        title = parse_title(list(title.split(':'))[0])
+        # TODO: function to figure out whether title is movie or series 
+        title = list(title.split(':'))[0]
+
         if date not in dates:
             dates[date] = 0
         if date.year not in years:
@@ -116,7 +109,19 @@ def parse_file(items):
             months[date.month - 1] += JSONMedia.runtime
             continue
 
+        media = redis.getMedia(title)
+
+        if media:
+            runtime = media.runtime
+            dates[date] += runtime
+            years[date.year] += runtime
+            tot_length += runtime
+            weekdays[date.weekday()] += runtime
+            months[date.month - 1] += runtime
+            continue
+
         media = get_media(title)
+
         if media:
             runtime = media.runtime
             if media.movie == 1:
@@ -168,30 +173,18 @@ def parse_file(items):
     top_series = max(series, key=(lambda key: (series[key].episodes_watched * series[key].runtime)))
     top_movie = max(movies, key=(lambda key: movies[key].times_watched))
 
-    data['runtime'] = tot_length
+    data['runtime'] = int(tot_length/60)
     data['not_found'] = not_found
     data['movies'] = no_of_movies
     data['highscore'] = longest_time
     data['highscore_date'] = str(longest_day).split(' ')[0]
     data['top_series'] = urllib.parse.unquote_plus(top_series)
     data['top_series_episodes'] = series[top_series].episodes_watched
-    data['top_series_total_time'] = (series[top_series].episodes_watched * series[top_series].runtime)/60
+    data['top_series_total_time'] = int((series[top_series].episodes_watched * series[top_series].runtime)/60)
     data['top_movie'] = urllib.parse.unquote_plus(top_movie)
     data['top_movie_times'] = movies[top_movie].times_watched
     # Convert to hours
-    data['weekdays'] = list(map((lambda x: x/60), weekdays))
-    data['months'] = list(map((lambda x: x/60), months))
+    data['weekdays'] = list(map((lambda x: int(x/60)), weekdays))
+    data['months'] = list(map((lambda x: int(x/60)), months))
     data['years'] = years
     return json.dumps(data)
-
-
-def test_db():
-    add_media('test', 5, 0)
-    media = get_media('test')
-    delete_media('test')
-    return media.runtime
-
-
-def show_db():
-    allt = get_all()
-    print(list(allt))
