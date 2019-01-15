@@ -1,24 +1,16 @@
-from init import db
+import json
 
-class Media(db.Model):
-    name = db.Column(db.String(80), primary_key=True, unique=False, nullable=False)
-    runtime = db.Column(db.Integer(), unique=False, nullable=True)
-    movie = db.Column(db.Integer())
+class Movie:
 
-    def __init__(self, name, runtime, movie = 0):
+    def __init__(self, name, runtime, times_watched = 1):
         self.name = name
         self.runtime = runtime
-        self.movie = movie
-
-    def __repr__(self):
-        return 'Media {}'.format(self.name)
+        self.times_watched = times_watched
 
 
-class NotFound(db.Model):
-    name = db.Column(db.String(80), primary_key=True, unique=False, nullable=False)
+class Series:
 
-    def __init__(self, name):
+    def __init__(self, name, runtime, episodes_watched = 1):
         self.name = name
-
-    def __repr__(self):
-        return 'NotFound {}'.format(self.name)
+        self.runtime = runtime
+        self.episodes_watched = episodes_watched
