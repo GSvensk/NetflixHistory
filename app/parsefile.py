@@ -6,12 +6,14 @@ import requests
 from .db import *
 from .redis import Redis
 from .models import Movie, Series
-#from environment import API_KEY
+from environment import API_KEY
 
 MAX_TRIES = 3
 API_SLEEP_TIME = 10
-API_KEY = "8c04c3e5fe547c0b2ec18438737a5dbc"
+API_KEY = API_KEY
 
+series = {}
+movies = {}
 
 def parse_title(title):
     title = title.replace("’", "'")
@@ -66,8 +68,6 @@ def try_search_tmdb(title):
 def parse_file(items):
 
     redis = Redis()
-    series = {}
-    movies = {}
     tot_length = 0
     not_found = 0
     no_of_movies = 0
@@ -87,86 +87,83 @@ def parse_file(items):
         if date.year not in years:
             years[date.year] = 0
 
+        runtime = -1
+        # Dicts
         if title in series:
             JSONMedia = series[title]
             JSONMedia.episodes_watched += 1
             series[title] = JSONMedia
-            dates[date] += JSONMedia.runtime
-            years[date.year] += JSONMedia.runtime
-            tot_length += JSONMedia.runtime
-            weekdays[date.weekday()] += JSONMedia.runtime
-            months[date.month - 1] += JSONMedia.runtime
-            continue
+            runtime = JSONMedia.runtime
 
-        if title in movies:
+        elif title in movies:
             JSONMedia = movies[title]
             JSONMedia.times_watched += 1
             movies[title] = JSONMedia
-            dates[date] += JSONMedia.runtime
-            years[date.year] += JSONMedia.runtime
-            tot_length += JSONMedia.runtime
-            weekdays[date.weekday()] += JSONMedia.runtime
-            months[date.month - 1] += JSONMedia.runtime
-            continue
+            no_of_movies += 1
+            runtime = JSONMedia.runtime
 
-        media = redis.getMedia(title)
+        # REDIS
+        if runtime < 0:
+            media = redis.getMedia(title)
 
-        if media:
-            runtime = media.runtime
+            if media:
+                runtime = media.runtime
+
+                if media.__class__.__name__ == 'Movie':
+                    no_of_movies += 1 
+                    movies[title] = media
+                elif media.__class__.__name__ == 'Series':
+                    series[title] = media
+            
+
+        # DB
+        if runtime < 0:
+            media = get_media(title)
+
+            if media:
+                runtime = media.runtime
+                if media.is_movie == 1:
+                    no_of_movies += 1
+                    movies[title] = Movie(title, runtime)
+                elif media.is_movie == 0:
+                    series[title] = Series(title, runtime)
+                else:
+                    print("Type not found of: " + title)
+
+        if runtime < 0:
+            # API
+            search = try_search_tmdb(title)
+
+            if len(list(search.json()['results'])) > 0:
+                most_probable_result = list(search.json()['results'])[0]
+                is_movie = most_probable_result['media_type'] == 'movie'
+                runtime = get_media_runtime(most_probable_result)
+
+                redis.addMedia(title, runtime, is_movie)
+                add_media(title, runtime, is_movie)
+
+                if is_movie:
+                    no_of_movies += 1
+                    movies[title] = Movie(title, runtime)
+                else:
+                    series[title] = Series(title, runtime)
+
+            else:
+                if title == "Club of Crows":
+                    runtime = 40
+                    series[title] = Series(title, runtime)
+                    
+                else:
+                    add_notfound(title)
+                    print("Not found: {}".format(title))
+                    not_found += 1
+        
+        if runtime >= 0:
             dates[date] += runtime
             years[date.year] += runtime
             tot_length += runtime
             weekdays[date.weekday()] += runtime
             months[date.month - 1] += runtime
-            continue
-
-        media = get_media(title)
-
-        if media:
-            runtime = media.runtime
-            if media.movie == 1:
-                no_of_movies += 1
-                movies[title] = Movie(title, runtime)
-            elif media.movie == 0:
-                series[title] = Series(title, runtime)
-            else:
-                print("Type not found of: " + title)
-
-            dates[date] += runtime
-            years[date.year] += runtime
-            tot_length += runtime
-            weekdays[date.weekday()] += runtime
-            months[date.month - 1] += runtime
-            continue
-
-        search = try_search_tmdb(title)
-
-        if len(list(search.json()['results'])) > 0:
-            most_probable_result = list(search.json()['results'])[0]
-            runtime = get_media_runtime(most_probable_result)
-            if most_probable_result['media_type'] == 'movie':
-                no_of_movies += 1
-                add_media(title, runtime, 1)
-                movies[title] = Movie(title, runtime)
-
-            else:
-                add_media(title, runtime, 0)
-                series[title] = Series(title, runtime)
-
-        else:
-            if title == "Club+of+Crows":
-                runtime = 40
-                series[title] = Series(title, runtime)
-            else:
-                add_notfound(title)
-                print("Not found: {}".format(title))
-                not_found += 1
-
-        dates[date] += runtime
-        years[date.year] += runtime
-        weekdays[date.weekday()] += runtime
-        months[date.month - 1] += runtime
-        tot_length += runtime
 
     longest_time = max(dates.values())
     longest_day = max(dates, key=(lambda key: dates[key]))
