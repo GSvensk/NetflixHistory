@@ -8,12 +8,6 @@ import os
 app = Flask(__name__)
 cors = CORS(app, resources={r"/parse": {"origins": "*"}})
 api = Api(app)
-#if local old db
-#file_path = os.path.abspath(os.getcwd())+"\database.db"
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + file_path
-
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
 parser = reqparse.RequestParser()
 
@@ -33,6 +27,5 @@ api.add_resource(ParseFile, '/parse')
 if __name__ == '__main__':
     from app.db import recreate_tables
     #recreate_tables()
-    #init_db()
 
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
