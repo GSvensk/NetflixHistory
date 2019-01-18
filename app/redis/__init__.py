@@ -36,7 +36,7 @@ class Redis:
         return Series(name, decoded["runtime"], episodes_watched = 1)
 
 
-    def setMedia(self, name, runtime, is_movie = True):
+    def addMedia(self, name, runtime, is_movie = True):
         media = Media(name, runtime, is_movie).toJSON()
         result = self.r.set(name, media)
         if result == "False":

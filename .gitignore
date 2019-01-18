@@ -6,3 +6,5 @@ __pycache__/
 app/__pychache__/
 database.db
 migrations/
+.vscode/
+env/
